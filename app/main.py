@@ -116,3 +116,21 @@ def scan(
         "disclaimer": DISCLAIMER,
         "cached_at": _cache.get(market, {}).get("ts"),
     }
+@app.get("/debug")
+def debug(symbol: str = Query("AAPL")):
+    """Diagnostic: try to fetch one symbol and report what came back."""
+    import traceback
+    out = {"symbol": symbol}
+    try:
+        hist = dt.download_histories([symbol], period="6mo").get(symbol)
+        if hist is None:
+            out["history"] = "None (no data returned)"
+            out["rows"] = 0
+        else:
+            out["rows"] = len(hist)
+            out["last_close"] = float(hist["Close"].dropna().iloc[-1]) if len(hist) else None
+            out["metrics"] = dt.compute_technical(hist)
+    except Exception as e:
+        out["error"] = f"{type(e).__name__}: {e}"
+        out["trace"] = traceback.format_exc()[-800:]
+    return out
